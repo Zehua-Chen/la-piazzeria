@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Start Scene.unity
+    guid: 9fc0d4010bbf28b4594072e72b8655ab
+  - enabled: 1
+    path: Assets/Scenes/Kitchen.unity
+    guid: 5742c85563f284b17949ca235fe18141
+  - enabled: 1
+    path: Assets/Scenes/Tutorial.unity
+    guid: 80c9deaa5a1ec47fd81698d6a44ff0b5
+  - enabled: 1
+    path: Assets/Scenes/Contributors.unity
+    guid: c7d6ac3933df946bd85cf18657615502
+  - enabled: 1
+    path: Assets/Scenes/Records.unity
+    guid: 439d5c46210da49f8b55cade5c32bc17
+  m_configObjects: {}

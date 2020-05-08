@@ -1,0 +1,296 @@
+﻿using UnityEngine;
+using PizzaGame.Orders;
+using PizzaGame.UI;
+using PizzaGame.Environment;
+using PizzaGame.Services;
+using System.Collections.Generic;
+using System;
+
+namespace PizzaGame.Pizzas
+{
+    public class ToppingStation : MonoBehaviour
+    {
+        [Header("Pizza Creation")]
+        [SerializeField]
+        GameObject _pizzaTemplate = null;
+
+        [SerializeField]
+        GameObject _pepperoniTemplate = null;
+
+        [SerializeField]
+        GameObject _oliveTemplate = null;
+
+        [SerializeField]
+        GameObject _sausageTemplate = null;
+
+        [SerializeField]
+        GameObject _mushroomTemplate = null;
+
+        [SerializeField]
+        LayerMask _pizzaLayerMask = new LayerMask();
+
+        [SerializeField]
+        Transform _newPizzaTransform = null;
+
+        [Header("Interactions")]
+        [SerializeField]
+        string _triggerButton = "Interact";
+
+        [SerializeField]
+        string _cheeseButton = "Cheese";
+
+        [SerializeField]
+        string _sauceButton = "Sauce";
+
+        [SerializeField]
+        string _kneadButton = "Knead";
+
+        [SerializeField]
+        float _toppingCoolDown = 0.5f;
+
+        [SerializeField]
+        InteractableItem _interactableItem = null;
+
+        [SerializeField]
+        FocusZone _focusZone = null;
+
+        [Header("UI")]
+        [SerializeField]
+        ToppingStationPanel _toppingStationPanel = null;
+
+        [Header("Services")]
+        [SerializeField]
+        InventoryService _inventoryService = null;
+
+        [SerializeField]
+        private Dictionary<KeyCode, Ingredient> _ingredientKeyMapping = null;
+
+        [SerializeField]
+        private Dictionary<Ingredient, GameObject> _ingredientTemplateMapping = null;
+
+        public GameObject[] doughLumps;
+
+        int _maxDoughLump = 0;
+        int _doughLevel = 0;
+        bool _focused = false;
+
+        float _coolDown = 0.0f;
+
+        GameObject _selectedIngredientTemplate = null;
+
+        Camera _camera = null;
+
+        public Pizza Pizza { get; set; }
+
+        #region Callbacks
+
+        private void Awake()
+        {
+            _doughLevel = -1;
+            _maxDoughLump = doughLumps.Length - 1;
+
+            _interactableItem.LookedAt.AddListener(this.OnLookedAt);
+
+            _ingredientKeyMapping = Ingredients.MapKeysToIngredients();
+
+            MapIngredientsToTemplates();
+        }
+
+        private void Start()
+        {
+            _camera = Camera.main;
+            _toppingStationPanel.Hide();
+        }
+
+        private void Update()
+        {
+            if (_focused)
+            {
+                this.HandleCheeseSauceKnead();
+                this.HandleTopping();
+
+            }
+
+            _coolDown += Time.deltaTime;
+        }
+
+        #endregion
+
+        #region Callback Helpers
+
+        private void HandleCheeseSauceKnead()
+        {
+            if (Input.GetButtonDown(_cheeseButton) && this.Pizza != null)
+            {
+                this.Pizza.AddCheese();
+            }
+            else if (Input.GetButtonDown(_sauceButton) && this.Pizza != null)
+            {
+                this.Pizza.AddSauce();
+            }
+            else if (Input.GetButtonDown(_kneadButton) && this.Pizza == null)
+            {
+                this.KneadDough();
+            }
+        }
+
+        private void HandleTopping()
+        {
+            HandleSelectedIngredient();
+
+            if (_selectedIngredientTemplate != null && this.Pizza != null)
+            {
+                #region Peter's Original Version
+                /*
+                if (Input.GetMouseButtonDown(0) && _coolDown > _toppingCoolDown)
+                {
+                    _coolDown = 0.0f;
+
+                    Ray ray = _camera.ScreenPointToRay(Input.mousePosition);
+                    RaycastHit hit;
+
+                    if (Physics.Raycast(ray, out hit, 100.0f, _pizzaLayerMask.value))
+                    {
+                        GameObject ingredient = Instantiate(_selectedIngredientTemplate);
+                        ingredient.transform.position = hit.point + new Vector3(0.0f, 1.0f);
+                    }
+                }
+                */
+                #endregion
+
+                GameObject ingredient = Instantiate(_selectedIngredientTemplate);
+
+                float radius = UnityEngine.Random.Range(0, 0.75f);
+                float theta = UnityEngine.Random.Range(0, 360f);
+
+                Vector3 randomPos = new Vector3(radius * Mathf.Cos(theta), 1, radius * Mathf.Sin(theta));
+
+                ingredient.transform.position = this.Pizza.transform.position + randomPos;
+            }
+        }
+
+        private void MapIngredientsToTemplates()
+        {
+            _ingredientTemplateMapping = new Dictionary<Ingredient, GameObject>();
+            _ingredientTemplateMapping[Ingredient.Mushroom] = _mushroomTemplate;
+            _ingredientTemplateMapping[Ingredient.Olive] = _oliveTemplate;
+            _ingredientTemplateMapping[Ingredient.Sausage] = _sausageTemplate;
+            _ingredientTemplateMapping[Ingredient.Pepperoni] = _pepperoniTemplate;
+        }
+
+        private void HandleSelectedIngredient()
+        {
+            foreach (KeyCode key in _ingredientKeyMapping.Keys)
+            {
+                if (Input.GetKeyDown(key))
+                {
+                    Ingredient chosenIngredient = _ingredientKeyMapping[key];
+                    _selectedIngredientTemplate = _ingredientTemplateMapping[chosenIngredient];
+                    return;
+                }
+            }
+
+            _selectedIngredientTemplate = null;
+        }
+
+        #endregion
+
+        #region Event Handlers
+
+        private void OnLookedAt()
+        {
+            if (Input.GetButton(_triggerButton))
+            {
+                _interactableItem.Deactivate();
+                _toppingStationPanel.Show();
+                _focusZone.GrabCamera(Camera.main);
+                _focused = true;
+            }
+        }
+
+        public void OnDone()
+        {
+            _interactableItem.Activate();
+            _focusZone.ReleaseCamera();
+            _toppingStationPanel.Hide();
+            _focused = false;
+        }
+
+        public void OnNewPizza()
+        {
+            if (this.Pizza == null && _doughLevel == -1)
+            {
+                _doughLevel = 0;
+                doughLumps[_doughLevel].SetActive(true);
+            }   
+        }
+
+        private void KneadDough()
+        {
+            if (this.Pizza == null && _doughLevel >= 0)
+            {
+                doughLumps[_doughLevel].SetActive(false);
+
+                if (_doughLevel == _maxDoughLump)
+                {
+                    this.SpawnPizza();
+                    _doughLevel = -1;
+                }
+                else
+                {
+                    _doughLevel++;
+                    doughLumps[_doughLevel].SetActive(true);
+                }
+            }
+        }
+
+        private void SpawnPizza()
+        {
+            GameObject newPizza = Instantiate(_pizzaTemplate);
+            newPizza.transform.position = _newPizzaTransform.position;
+
+            this.Pizza = newPizza.GetComponent<Pizza>();
+        }
+
+        public void OnMoveToInventory()
+        {
+            if (_inventoryService.Pizza == null && this.Pizza.IsOvenReady())
+            {
+                _inventoryService.Pizza = this.Pizza;
+                this.Pizza.gameObject.SetActive(false);
+                this.Pizza = null;
+            }
+        }
+
+        public void OnAddTopping(Ingredient ingredient)
+        {
+            this.Pizza.AddTopping(ingredient);
+        }
+
+        public void OnIngredientSelected(Ingredient ingredient)
+        {
+            /*
+            switch (ingredient)
+            {
+                case Ingredient.Mushroom:
+                    _selectedIngredientTemplate = _mushroomTemplate;
+                    break;
+                case Ingredient.Pepperoni:
+                    _selectedIngredientTemplate = _pepperoniTemplate;
+                    break;
+                case Ingredient.Olive:
+                    _selectedIngredientTemplate = _oliveTemplate;
+                    break;
+                case Ingredient.Sausage:
+                    _selectedIngredientTemplate = _sausageTemplate;
+                    break;
+                default:
+                    Debug.LogErrorFormat("Ingredient not handled: {0}", ingredient);
+                    break;
+            }
+            */
+        }
+
+        #endregion
+    }
+}
