@@ -2,6 +2,11 @@
 
 Pizza making game for CS 498 - VR, Spring 2020, UIUC
 
+Demos are hosted at 
+
+- [connect.unity.com](https://connect.unity.com/p/la-piazzeria)
+- [Youtube](https://youtu.be/HsNdRtkdIJM)
+
 ## Covid
 
 This was originally a VR game, but got converted to regular Unity game due to COVID-19 outbreak,
